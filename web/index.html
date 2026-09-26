@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaAgent Voice Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f9fafb;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.2);
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0f172a;
+                --card-bg: #1e293b;
+                --text-main: #f8fafc;
+                --text-muted: #94a3b8;
+                --accent: #818cf8;
+                --accent-glow: rgba(129, 140, 248, 0.2);
+                --border: #334155;
+                --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            }
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .agent-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 3rem 2rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            letter-spacing: -0.025em;
+        }
+
+        /* MIC BUTTON */
+        .mic-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 3rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mic-button {
+            width: 80px;
+            height: 80px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2rem;
+            z-index: 2;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 0 0 var(--accent-glow);
+        }
+
+        .mic-button:hover {
+            transform: scale(1.05);
+        }
+
+        .mic-button.listening {
+            animation: pulse 1.5s infinite;
+            background-color: #ef4444;
+        }
+
+        .mic-button.thinking {
+            animation: rotate 2s linear infinite;
+            background-color: #f59e0b;
+        }
+
+        .mic-button.speaking {
+            animation: wave 1s ease-in-out infinite;
+            background-color: #10b981;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+            70% { box-shadow: 0 0 0 20px rgba(0,0,0,0); }
+            100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* TRANSCRIPT */
+        .transcript-panel {
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(0,0,0,0.03);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message .role {
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .message .text {
+            color: var(--text-main);
+        }
+
+        /* STEPS PANEL */
+        .steps-panel {
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-left: 2px solid var(--border);
+            padding-left: 1rem;
+            display: none;
+        }
+
+        .steps-panel.visible {
+            display: block;
+        }
+
+        /* ERROR STATE */
+        #error-display {
+            display: none;
+            color: #ef4444;
+            background: #fee2e2;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="error-display"></div>
+        <div class="agent-card">
+            <h1>NovaAgent</h1>
+
+            <div class="mic-container" id="mic-trigger">
+                <div class="mic-button" id="mic-status">
+                    🎤
+                </div>
+            </div>
+
+            <div class="transcript-panel" id="transcript">
+                <div class="message">
+                    <div class="role">System</div>
+                    <div class="text">Click the mic to start talking...</div>
+                </div>
+            </div>
+
+            <div class="steps-panel" id="steps">
+                <strong>Plan:</strong>
+                <div id="steps-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN_SERVER = 'http://localhost:8000/token';
+        const LIVEKIT_URL = 'wss://your-livekit-cloud-url.livekit.cloud'; // Will be filled by .env in real deploy
+
+        let room;
+        let micActive = false;
+
+        async function connect() {
+            try {
+                const response = await fetch(`${TOKEN_SERVER}?room=nova-room&identity=user-${Math.floor(Math.random()*1000)}`);
+                const data = await response.json();
+                const token = data.token;
+
+                room = new LiveKit.Room();
+                await room.connect(LIVEKIT_URL, token);
+
+                updateStatus('idle');
+                addTranscript('System', 'Connected to NovaAgent. You can speak now!');
+            } catch (e) {
+                showError('Failed to connect to NovaAgent. Check if token server is running.');
+            }
+        }
+
+        function updateStatus(state) {
+            const btn = document.getElementById('mic-status');
+            btn.className = 'mic-button';
+            if (state === 'listening') btn.classList.add('listening');
+            if (state === 'thinking') btn.classList.add('thinking');
+            if (state === 'speaking') btn.classList.add('speaking');
+
+            if (state === 'thinking') {
+                document.getElementById('steps').classList.add('visible');
+            } else {
+                document.getElementById('steps').classList.remove('visible');
+            }
+        }
+
+        function addTranscript(role, text) {
+            const panel = document.getElementById('transcript');
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `<div class="role">${role}</div><div class="text">${text}</div>`;
+            panel.appendChild(div);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        function showError(msg) {
+            const err = document.getElementById('error-display');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
+        document.getElementById('mic-trigger').onclick = async () => {
+            if (!room) {
+                await connect();
+            }
+            // In a real implementation, the mic toggle would handle room audio publish/unpublish
+            // toggle mic state logic here
+        };
+
+        // LiveKit event listeners for status updates
+        // room.on(LiveKit.RoomEvent.TrackSubscribed, ...)
+    </script>
+</body>
+</html>
