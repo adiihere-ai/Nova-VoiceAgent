@@ -82,4 +82,4 @@ async def main():
     cli.run_app(options)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
