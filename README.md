@@ -35,8 +35,8 @@ Unlike a simple voice-to-text-to-voice pipeline, NovaAgent breaks your request i
 
 **1. Clone the repo**
 ```bash
-git clone https://github.com/adiihere-ai/NovaAgent.git
-cd NovaAgent
+git clone https://github.com/adiihere-ai/Nova-VoiceAgent.git
+cd Nova-VoiceAgent
 ```
 
 **2. Create the virtual environment and install dependencies**
@@ -111,7 +111,7 @@ Click the mic and start talking.
 ## Project structure
 
 ```
-NovaAgent/
+Nova-VoiceAgent/
 ├── agent.py              # LiveKit AgentSession entrypoint (VAD, noise cancellation, LLM, STT, TTS)
 ├── planner.py             # Plan → execute → observe loop
 ├── tools.py                # Calculator and web search tools
